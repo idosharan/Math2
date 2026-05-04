@@ -953,7 +953,7 @@ function endMission(){
   }
 }
 
-// ===== EMAIL REPORT =====
+// ===== EMAIL REPORT via FormSubmit.co =====
 function sendReportEmail(pct, rank){
   const total = state.questions.length;
   const levelMeta = LEVEL_META[state.level];
@@ -968,13 +968,12 @@ function sendReportEmail(pct, rank){
     ).join('\n');
   }
 
-  const body = [
+  const message = [
     'שם הילד: '+playerName,
     'שלב: '+stageName,
     'משימה: '+missionName,
     'תשובות נכונות: '+state.correctCount+'/'+total,
     'אחוזי הצלחה: '+pct+'%',
-    'דירוג: '+rank,
     'ניקוד: '+state.xp,
     'רצף מקסימלי: '+state.maxCombo,
     '',
@@ -982,31 +981,16 @@ function sendReportEmail(pct, rank){
     wrongDetails
   ].join('\n');
 
-  // Using EmailJS
-  const emailData = {
-    service_id: 'service_math_game',
-    template_id: 'template_math_report',
-    user_id: 'YOUR_EMAILJS_PUBLIC_KEY',
-    template_params: {
-      to_email: 'idosharan@gmail.com',
-      subject: 'דוח משימה - '+playerName+' - '+missionName,
-      message: body,
-      player_name: playerName,
-      stage: stageName,
-      mission: missionName,
-      correct: state.correctCount+'/'+total,
-      accuracy: pct+'%',
-      rank: rank,
-      xp: state.xp,
-      max_combo: state.maxCombo,
-      wrong_details: wrongDetails
-    }
-  };
+  const formData = new FormData();
+  formData.append('name', playerName);
+  formData.append('_subject', 'דוח משימה - '+playerName+' - '+stageName+' - '+missionName);
+  formData.append('message', message);
+  formData.append('_captcha', 'false');
+  formData.append('_template', 'table');
 
-  fetch('https://api.emailjs.com/api/v1.0/email/send', {
+  fetch('https://formsubmit.co/ajax/idosharan@gmail.com', {
     method: 'POST',
-    headers: {'Content-Type': 'application/json'},
-    body: JSON.stringify(emailData)
+    body: formData
   }).catch(err => console.log('Email send failed:', err));
 }
 
