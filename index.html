@@ -268,6 +268,35 @@ input[type=number]{-moz-appearance:textfield}
 }
 
 /* ===== RESPONSIVE ===== */
+/* ===== NAME MODAL ===== */
+#nameModal{
+  position:fixed;inset:0;display:none;align-items:center;justify-content:center;
+  background:rgba(0,0,0,.9);z-index:300;padding:20px;
+}
+#nameModal.active{display:flex}
+.name-card{
+  background:var(--card);border:2px solid var(--neon-blue);border-radius:var(--radius);
+  padding:36px 28px;text-align:center;max-width:400px;width:100%;
+  box-shadow:var(--glow-blue);animation:slideIn .4s ease;
+}
+.name-card h2{
+  font-size:1.6rem;color:var(--neon-blue);margin-bottom:8px;
+  text-shadow:0 0 10px #00f0ff66;
+}
+.name-card p{color:var(--text-dim);font-size:.95rem;margin-bottom:20px}
+.name-input{
+  width:100%;padding:14px 18px;border-radius:var(--radius);background:var(--bg);
+  border:2px solid #444;color:var(--text);font-size:1.2rem;text-align:center;
+  font-weight:600;transition:border-color .2s;margin-bottom:16px;
+}
+.name-input:focus{border-color:var(--neon-green);box-shadow:var(--glow-green)}
+.name-submit{
+  padding:14px 40px;border-radius:30px;font-size:1.1rem;font-weight:700;
+  background:linear-gradient(135deg,var(--neon-green),#00cc44);color:#000;
+  transition:all .2s;
+}
+.name-submit:hover{transform:scale(1.06)}
+
 @media(max-width:480px){
   .worlds{flex-direction:column;width:100%}
   .world-btn{min-width:unset}
@@ -365,7 +394,39 @@ input[type=number]{-moz-appearance:textfield}
   </div>
 </div>
 
+<!-- ===== NAME MODAL ===== -->
+<div id="nameModal">
+  <div class="name-card">
+    <h2>🎮 ברוכים הבאים!</h2>
+    <p>מה השם שלך, גיימר?</p>
+    <input type="text" class="name-input" id="nameInput" placeholder="הכניסו את השם שלכם..." maxlength="30">
+    <br><br>
+    <button class="name-submit" onclick="saveName()">🚀 בואו נתחיל!</button>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"></script>
 <script>
+// ===== PLAYER NAME =====
+let playerName = localStorage.getItem('mathGamePlayerName') || '';
+function checkName(){
+  if(!playerName){
+    document.getElementById('nameModal').classList.add('active');
+    document.getElementById('nameInput').addEventListener('keydown', e=>{
+      if(e.key==='Enter') saveName();
+    });
+  }
+}
+function saveName(){
+  const inp = document.getElementById('nameInput');
+  const name = inp.value.trim();
+  if(!name){inp.focus();return;}
+  playerName = name;
+  localStorage.setItem('mathGamePlayerName', name);
+  document.getElementById('nameModal').classList.remove('active');
+}
+window.addEventListener('DOMContentLoaded', checkName);
+
 // ===== AUDIO ENGINE (Web Audio API) =====
 const AudioCtx = window.AudioContext || window.webkitAudioContext;
 let audioCtx;
@@ -647,7 +708,7 @@ const LEVEL_META = {
 let state = {
   level: 1, mission: '', questions: [], current: 0,
   xp: 0, combo: 0, maxCombo: 0, correctCount: 0, hp: 3,
-  answered: false, hintUsed: false
+  answered: false, hintUsed: false, wrongAnswers: []
 };
 
 // ===== SCREEN MANAGEMENT =====
@@ -684,6 +745,7 @@ function startMission(missionId){
   state.hp = 3;
   state.answered = false;
   state.hintUsed = false;
+  state.wrongAnswers = [];
 
   if(state.level===1) state.questions = generateLevel1(missionId);
   else if(state.level===2) state.questions = generateLevel2(missionId);
@@ -806,6 +868,7 @@ function checkAnswer(chosen, btnEl, gridEl){
   } else {
     state.combo=0;
     state.hp--;
+    state.wrongAnswers.push({qNum: state.current+1, question: q.q, givenAnswer: chosen, correctAnswer: q.answer});
     card.className='question-card shake';
     if(btnEl){
       btnEl.classList.add('selected-wrong');
@@ -881,12 +944,70 @@ function endMission(){
   document.getElementById('statAccuracy').textContent = pct+'%';
 
   showScreen('results');
+  sendReportEmail(pct, rank);
 
   if(pct>=60){
     sfxVictory();
     spawnConfetti();
     if(pct>=90) sfxBossVictory();
   }
+}
+
+// ===== EMAIL REPORT =====
+function sendReportEmail(pct, rank){
+  const total = state.questions.length;
+  const levelMeta = LEVEL_META[state.level];
+  const missionMeta = levelMeta.missions.find(m=>m.id===state.mission);
+  const missionName = missionMeta ? missionMeta.name : state.mission;
+  const stageName = levelMeta.title;
+
+  let wrongDetails = 'אין טעויות - מושלם!';
+  if(state.wrongAnswers.length > 0){
+    wrongDetails = state.wrongAnswers.map(w =>
+      'שאלה '+w.qNum+': '+w.question+' | תשובת הילד: '+w.givenAnswer+' | תשובה נכונה: '+w.correctAnswer
+    ).join('\n');
+  }
+
+  const body = [
+    'שם הילד: '+playerName,
+    'שלב: '+stageName,
+    'משימה: '+missionName,
+    'תשובות נכונות: '+state.correctCount+'/'+total,
+    'אחוזי הצלחה: '+pct+'%',
+    'דירוג: '+rank,
+    'ניקוד: '+state.xp,
+    'רצף מקסימלי: '+state.maxCombo,
+    '',
+    '--- שאלות שנענו בטעות ---',
+    wrongDetails
+  ].join('\n');
+
+  // Using EmailJS
+  const emailData = {
+    service_id: 'service_math_game',
+    template_id: 'template_math_report',
+    user_id: 'YOUR_EMAILJS_PUBLIC_KEY',
+    template_params: {
+      to_email: 'idosharan@gmail.com',
+      subject: 'דוח משימה - '+playerName+' - '+missionName,
+      message: body,
+      player_name: playerName,
+      stage: stageName,
+      mission: missionName,
+      correct: state.correctCount+'/'+total,
+      accuracy: pct+'%',
+      rank: rank,
+      xp: state.xp,
+      max_combo: state.maxCombo,
+      wrong_details: wrongDetails
+    }
+  };
+
+  fetch('https://api.emailjs.com/api/v1.0/email/send', {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify(emailData)
+  }).catch(err => console.log('Email send failed:', err));
 }
 
 function replayMission(){
