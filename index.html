@@ -322,12 +322,12 @@ input[type=number]{-moz-appearance:textfield}
     <button class="world-btn" onclick="selectWorld(2)">
       <span class="icon">⚔️</span>
       <span>שלב 2</span>
-      <span class="label">עולם הרבבה</span>
+      <span class="label">חיבור וחיסור עד 10,000</span>
     </button>
     <button class="world-btn" onclick="selectWorld(3)">
       <span class="icon">🏆</span>
       <span>שלב 3</span>
-      <span class="label">משימות בוס</span>
+      <span class="label">כפל רב-ספרתי</span>
     </button>
   </div>
 </div>
@@ -528,16 +528,37 @@ function typeQ(q, answer, hint){
 
 function generateLevel1(sub){
   const qs=[];
+  const highFactors=[7,8,9];
+  const allFactors=[2,3,4,5,6,7,8,9,10];
+
+  function pickFactor(useHigh){
+    if(useHigh) return highFactors[rnd(0,2)];
+    return allFactors[rnd(0,allFactors.length-1)];
+  }
+
   if(sub==='mult'||sub==='mix'||sub==='boss'){
     for(let i=0;i<30;i++){
-      const a=rnd(2,10),b=rnd(2,10),ans=a*b;
+      const high = Math.random()<0.7;
+      const a=pickFactor(high), b=rnd(2,10), ans=a*b;
       qs.push(mcQ(a+' × '+b+' = ?', ans, 'חשבו: '+a+' קבוצות של '+b, 0, 100));
     }
   }
   if(sub==='div'||sub==='mix'||sub==='boss'){
     for(let i=0;i<30;i++){
-      const b=rnd(2,10),a=rnd(2,10),product=a*b;
+      const high = Math.random()<0.7;
+      const b=pickFactor(high), a=rnd(2,10), product=a*b;
       qs.push(mcQ(product+' ÷ '+b+' = ?', a, 'חשבו: כמה פעמים '+b+' נכנס ב-'+product+'?', 0, 100));
+    }
+  }
+  if(sub==='missing'||sub==='mix'||sub==='boss'){
+    for(let i=0;i<30;i++){
+      const high = Math.random()<0.7;
+      const a=pickFactor(high), b=rnd(2,10), product=a*b;
+      if(Math.random()<0.5){
+        qs.push(typeQ(a+' × ___ = '+product, b, 'חשבו: '+product+' חלקי '+a));
+      } else {
+        qs.push(typeQ('___ × '+b+' = '+product, a, 'חשבו: '+product+' חלקי '+b));
+      }
     }
   }
   return shuffle(qs).slice(0,10);
@@ -545,73 +566,36 @@ function generateLevel1(sub){
 
 function generateLevel2(sub){
   const qs=[];
-  if(sub==='structure'||sub==='mix'||sub==='boss'){
-    // digit value
-    for(let i=0;i<15;i++){
-      const n=rnd(1000,9999);
-      const digitPos=rnd(0,3);
-      const posNames=['אחדות','עשרות','מאות','אלפים'];
-      const digitStr=String(n);
-      const digit=parseInt(digitStr[3-digitPos]);
-      const values=[digit, digit*(digitPos===0?1:digitPos===1?10:digitPos===2?100:1000)];
-      // ask for value (not digit)
-      const val = digit*Math.pow(10,digitPos);
-      qs.push(mcQ('מהו ערך ספרת ה'+posNames[digitPos]+' במספר '+n.toLocaleString()+'?', val,
-        'ספרת ה'+posNames[digitPos]+' היא '+digit+', הערך שלה הוא '+digit+'×'+Math.pow(10,digitPos), 0, 9000));
-    }
-    // expanded form
-    for(let i=0;i<15;i++){
-      const th=rnd(1,9)*1000, hu=rnd(0,9)*100, te=rnd(0,9)*10, on=rnd(0,9);
-      const n=th+hu+te+on;
-      if(n<1000) continue;
-      const expanded=th+(hu?'+'+hu:'')+(te?'+'+te:'')+(on?'+'+on:'');
-      qs.push(typeQ(expanded+' = ?', n, 'חברו את כל החלקים יחד'));
-    }
-    // comparison
-    for(let i=0;i<10;i++){
-      const a=rnd(1000,9999),b=rnd(1000,9999);
-      if(a===b) continue;
-      const sign=a>b?'>':'<';
-      qs.push({q:'מה הסימן הנכון? '+a.toLocaleString()+' __ '+b.toLocaleString(),
-        answer:sign, options:shuffle(['>','<','=']), type:'mc', hint:'השוו ספרה ספרה מהאלפים'});
+  if(sub==='add'||sub==='mix'||sub==='boss'){
+    for(let i=0;i<20;i++){
+      const a=rnd(100,9999), b=rnd(100,9999-a>0?9999-a:5000);
+      const sum=a+b;
+      if(sum>10000) continue;
+      qs.push(typeQ(a.toLocaleString()+' + '+b.toLocaleString()+' = ?', sum, 'חברו ספרה ספרה מימין לשמאל'));
     }
   }
-  if(sub==='rounding'||sub==='mix'||sub==='boss'){
-    // rounding to tens
-    for(let i=0;i<10;i++){
-      const n=rnd(100,9999);
-      const rounded=Math.round(n/10)*10;
-      qs.push(mcQ('עגלו את '+n.toLocaleString()+' לעשרות:', rounded, 'הסתכלו על ספרת האחדות', rounded-30, rounded+30));
-    }
-    // rounding to hundreds
-    for(let i=0;i<10;i++){
-      const n=rnd(100,9999);
-      const rounded=Math.round(n/100)*100;
-      qs.push(mcQ('עגלו את '+n.toLocaleString()+' למאות:', rounded, 'הסתכלו על ספרת העשרות', rounded-300, rounded+300));
-    }
-    // rounding to thousands
-    for(let i=0;i<10;i++){
-      const n=rnd(1000,9999);
-      const rounded=Math.round(n/1000)*1000;
-      qs.push(mcQ('עגלו את '+n.toLocaleString()+' לאלפים:', rounded, 'הסתכלו על ספרת המאות', rounded>2000?rounded-3000:0, rounded+3000));
+  if(sub==='sub'||sub==='mix'||sub==='boss'){
+    for(let i=0;i<20;i++){
+      const a=rnd(1000,10000), b=rnd(100,a);
+      const diff=a-b;
+      qs.push(typeQ(a.toLocaleString()+' - '+b.toLocaleString()+' = ?', diff, 'חסרו ספרה ספרה מימין לשמאל'));
     }
   }
-  if(sub==='bigmult'||sub==='mix'||sub==='boss'){
-    // mult by tens/hundreds
-    for(let i=0;i<15;i++){
-      const a=rnd(2,9), b=[10,20,30,40,50,60,70,80,90,100,200,300,400,500,600,700,800,900][rnd(0,17)];
-      qs.push(typeQ(a+' × '+b+' = ?', a*b, 'כפלו '+a+'×'+String(b).replace(/0+$/,'')+' והוסיפו אפסים'));
-    }
-    // div by single digit with tens/hundreds
-    for(let i=0;i<15;i++){
-      const b=rnd(2,9), factor=[10,20,30,40,50,100,200,300][rnd(0,7)];
-      const a=b*factor;
-      qs.push(typeQ(a+' ÷ '+b+' = ?', factor, 'חלקו '+a+' ב-'+b));
-    }
-    // mult tens by tens
-    for(let i=0;i<10;i++){
-      const a=rnd(2,9)*10, b=rnd(2,9)*10;
-      qs.push(typeQ(a+' × '+b+' = ?', a*b, 'כפלו את הספרות ואז הוסיפו אפסים'));
+  if(sub==='word'||sub==='mix'||sub==='boss'){
+    const wordProbs=[
+      ()=>{const a=rnd(1000,5000),b=rnd(1000,4000);return{q:'🎮 גיימר צבר '+a.toLocaleString()+' נקודות XP ברובלוקס ביום ראשון, וביום שני צבר עוד '+b.toLocaleString()+' נקודות. כמה נקודות XP יש לו בסך הכל?',a:a+b}},
+      ()=>{const a=rnd(5000,9500),b=rnd(1000,a-1000);return{q:'⚔️ לשחקן בפורטנייט היו '+a.toLocaleString()+' מטבעות V-Bucks. הוא קנה סקין ב-'+b.toLocaleString()+' מטבעות. כמה נשאר לו?',a:a-b}},
+      ()=>{const a=rnd(2000,6000),b=rnd(1000,3000);return{q:'💎 בבראול סטארס, שחקנית אספה '+a.toLocaleString()+' גביעים בעונה הראשונה ו-'+b.toLocaleString()+' בעונה השנייה. כמה גביעים אספה בסך הכל?',a:a+b}},
+      ()=>{const a=rnd(5000,10000),b=rnd(1000,4000);return{q:'🏆 לצוות גיימינג היו '+a.toLocaleString()+' נקודות דירוג. אחרי הפסד ירדו '+b.toLocaleString()+' נקודות. מה הדירוג הנוכחי?',a:a-b}},
+      ()=>{const a=rnd(1500,4500),b=rnd(1500,4500);return{q:'🎮 נועם קנה חבילת מטבעות ברובלוקס עם '+a.toLocaleString()+' רובאקס, וחברו נתן לו עוד '+b.toLocaleString()+'. כמה רובאקס יש לו?',a:a+b}},
+      ()=>{const total=rnd(6000,10000),used=rnd(2000,total-1000);return{q:'⚡ שחקן התחיל שלב עם '+total.toLocaleString()+' נקודות חיים. הוא ספג נזק של '+used.toLocaleString()+' נקודות. כמה נקודות חיים נשארו?',a:total-used}},
+      ()=>{const a=rnd(1200,4000),b=rnd(1200,4000);return{q:'🕹️ במיינקראפט, שחקן כרה '+a.toLocaleString()+' בלוקים ביום שני ו-'+b.toLocaleString()+' ביום שלישי. כמה בלוקים כרה בסך הכל?',a:a+b}},
+      ()=>{const a=rnd(7000,10000),b=rnd(2000,5000);return{q:'🎯 שחקנית הייתה במקום עם '+a.toLocaleString()+' נקודות XP. היא הפסידה קרב וירדה '+b.toLocaleString()+' נקודות. מה הניקוד שלה עכשיו?',a:a-b}},
+    ];
+    for(let i=0;i<20;i++){
+      const gen=wordProbs[rnd(0,wordProbs.length-1)];
+      const p=gen();
+      qs.push(typeQ(p.q, p.a, 'קראו שוב בעיון - חיבור או חיסור?'));
     }
   }
   return shuffle(qs).slice(0,10);
@@ -619,56 +603,36 @@ function generateLevel2(sub){
 
 function generateLevel3(sub){
   const qs=[];
-  if(sub==='order'||sub==='mix'||sub==='boss'){
-    const orderProbs=[
-      {q:'5 + 3 × 4 = ?', a:17}, {q:'10 - 2 × 3 = ?', a:4}, {q:'8 + 6 ÷ 2 = ?', a:11},
-      {q:'20 - 12 ÷ 4 = ?', a:17}, {q:'3 × 5 + 2 × 4 = ?', a:23}, {q:'7 + 3 × 6 - 5 = ?', a:20},
-      {q:'(5 + 3) × 4 = ?', a:32}, {q:'(10 - 2) ÷ 4 = ?', a:2}, {q:'(7 + 3) × (6 - 4) = ?', a:20},
-      {q:'2 × (8 + 2) = ?', a:20}, {q:'(12 - 4) × 3 = ?', a:24}, {q:'18 ÷ (2 + 1) = ?', a:6},
-      {q:'(20 - 8) ÷ 4 = ?', a:3}, {q:'5 × (10 - 7) = ?', a:15}, {q:'(4 + 6) × (3 + 2) = ?', a:50},
-      {q:'100 - 5 × 10 = ?', a:50}, {q:'3 × 3 + 4 × 4 = ?', a:25}, {q:'(9 - 3) × (4 + 1) = ?', a:30},
-      {q:'2 + 8 ÷ 4 + 3 = ?', a:7}, {q:'6 × 7 - 2 × 8 = ?', a:26},
-      {q:'(15 - 5) ÷ 2 + 3 = ?', a:8}, {q:'4 × (3 + 7) - 10 = ?', a:30},
-      {q:'60 ÷ (3 + 7) + 4 = ?', a:10}, {q:'(2 + 3) × (4 + 1) = ?', a:25},
-      {q:'8 × 5 - 3 × 5 = ?', a:25}, {q:'12 ÷ 4 + 8 ÷ 2 = ?', a:7},
-      {q:'(100 - 40) ÷ 6 = ?', a:10}, {q:'9 × 2 + 18 ÷ 3 = ?', a:24},
-      {q:'(6 + 2) × (9 - 5) = ?', a:32}, {q:'7 × 5 + 15 ÷ 5 = ?', a:38}
-    ];
-    orderProbs.forEach(p=>{
-      qs.push(typeQ(p.q, p.a, 'זכרו: כפל וחילוק לפני חיבור וחיסור, סוגריים קודם לכל!'));
-    });
+  if(sub==='double'||sub==='mix'||sub==='boss'){
+    // 2-digit × 1-digit
+    for(let i=0;i<20;i++){
+      const a=rnd(11,99), b=rnd(2,9), ans=a*b;
+      qs.push(typeQ(a+' × '+b+' = ?', ans, 'פרקו: '+a+' = '+(Math.floor(a/10)*10)+'+'+(a%10)+', כפלו כל חלק ב-'+b));
+    }
+  }
+  if(sub==='triple'||sub==='mix'||sub==='boss'){
+    // 3-digit × 1-digit
+    for(let i=0;i<20;i++){
+      const a=rnd(100,999), b=rnd(2,9), ans=a*b;
+      qs.push(typeQ(a+' × '+b+' = ?', ans, 'פרקו למאות, עשרות ואחדות וכפלו כל חלק ב-'+b));
+    }
   }
   if(sub==='word'||sub==='mix'||sub==='boss'){
     const wordProbs=[
-      {q:'🎮 דניאל קנה 3 סקינים ברובלוקס. כל סקין עלה 80 מטבעות. כמה מטבעות שילם בסך הכל?', a:240},
-      {q:'💎 ל-5 שחקנים בבראול סטארס יש 150 יהלומים לחלק שווה בשווה. כמה יהלומים לכל שחקן?', a:30},
-      {q:'⚔️ גיימר צבר 200 נקודות בשלב 1 ו-350 נקודות בשלב 2. כמה נקודות הוא צבר בסך הכל?', a:550},
-      {q:'🏆 בטורניר יש 8 קבוצות, בכל קבוצה 6 שחקנים. כמה שחקנים בטורניר?', a:48},
-      {q:'🎯 שחקנית ירתה 72 חיצים ב-9 סיבובים שווים. כמה חיצים בכל סיבוב?', a:8},
-      {q:'🎮 חנות מוכרת 4 משחקים ב-90 ש"ח כל אחד. הנחה של 60 ש"ח בסוף. כמה משלמים?', a:300},
-      {q:'💰 גיימר אסף 7 ארגזים, בכל ארגז 50 מטבעות זהב. כמה מטבעות בסך הכל?', a:350},
-      {q:'🕹️ במיינקראפט בנה שחקן 6 שורות של בלוקים, בכל שורה 8 בלוקים. כמה בלוקים בסך הכל?', a:48},
-      {q:'🎲 במשחק לוח יש 240 קלפים, וצריך לחלק ל-8 שחקנים שווה בשווה. כמה קלפים לכל שחקן?', a:30},
-      {q:'🔫 בפורטנייט, שחקן הרג 5 יריבים בכל משחק. אחרי 9 משחקים, כמה יריבים הוא הרג?', a:45},
-      {q:'🏅 למועדון גיימינג יש 7 צוותים. כל צוות זכה ב-300 נקודות, ויש בונוס של 100 לכולם. מה הסכום?', a:2200},
-      {q:'🧩 שחקן קנה 3 חפיסות קלפים ב-40 ש"ח כל אחת, ועוד אלבום ב-55 ש"ח. כמה שילם?', a:175},
-      {q:'🎮 נועם משחק רובלוקס, ובכל יום הוא מרוויח 120 מטבעות. כמה ירוויח ב-7 ימים?', a:840},
-      {q:'💎 בבראול סטארס יש מבצע: 400 ג\'מים ב-80 ש"ח. כמה עולה כל ג\'ם?', a:0, skip:true},
-      {q:'⚡ גיימר שיחק 4 שעות ביום, 5 ימים בשבוע, ובכל שעה צבר 30 נקודות. כמה נקודות בשבוע?', a:600},
-      {q:'🎯 במשחק יריות, שחקן פגע ב-8 מתוך 10 מטרות ב-6 סיבובים. כמה פגיעות בסך הכל?', a:48},
-      {q:'🏰 בקלאש רויאל, שחקן אסף 9 ארגזים ביום. כמה ארגזים ב-4 ימים?', a:36},
-      {q:'💰 שחקנית קנתה 500 מטבעות משחק ושילמה 50 ש"ח. אח"כ קנתה עוד 500. כמה שילמה בסך הכל?', a:100},
-      {q:'🎮 בטורניר פורטנייט: 3 ניצחונות שווים 150 נקודות כל אחד, ועוד 5 מקומות שניים ב-80 נקודות כל אחד. כמה נקודות בסה"כ?', a:850},
-      {q:'🕹️ שחקן קנה 2 ג\'ויסטיקים ב-120 ש"ח כל אחד, וקיבל הנחה של 40 ש"ח. כמה שילם?', a:200},
-      {q:'🎲 במשחק חברתי משחקים 10 שחקנים. 2 מהם עוזבים, ולכל שחקן שנשאר יש 6 מטלות. כמה מטלות בסך הכל?', a:48},
-      {q:'💎 שחקן במיינקראפט חפר 8 שורות. בכל שורה מצא 9 יהלומים. נתן 12 לחבר. כמה נשאר לו?', a:60},
-      {q:'🏆 צוות ספורט אלקטרוני זכה ב-3 טורנירים. בכל טורניר קיבל 2000 ש"ח. חילק שווה ל-5 שחקנים. כמה קיבל כל שחקן?', a:1200},
-      {q:'🎮 נועם אוסף קלפי פוקימון. יש לו 4 אלבומים, בכל אלבום 60 קלפים. קנה עוד 20 קלפים. כמה יש לו?', a:260},
-      {q:'⚔️ בלהב המלחמה, לוחם מכה 7 נזק לפגיעה. פגע 6 פעמים וקיבל בונוס של 8 נזק. מה הנזק הכולל?', a:50}
+      ()=>{const packs=rnd(3,9),price=rnd(12,99);return{q:'🎮 גיימר קנה '+packs+' חבילות סקינים ברובלוקס, כל חבילה עולה '+price+' רובאקס. כמה רובאקס שילם בסך הכל?',a:packs*price}},
+      ()=>{const days=rnd(2,9),perDay=rnd(100,500);return{q:'⚔️ שחקן בפורטנייט צובר '+perDay+' נקודות XP בכל יום. כמה נקודות יצבור ב-'+days+' ימים?',a:days*perDay}},
+      ()=>{const teams=rnd(3,8),players=rnd(15,45);return{q:'🏆 בטורניר גיימינג יש '+teams+' צוותים, בכל צוות '+players+' שחקנים. כמה שחקנים בטורניר?',a:teams*players}},
+      ()=>{const bags=rnd(4,9),gems=rnd(50,200);return{q:'💎 בבראול סטארס, שחקנית פתחה '+bags+' ארגזים ובכל ארגז '+gems+' ג\'מים. כמה ג\'מים קיבלה?',a:bags*gems}},
+      ()=>{const rows=rnd(3,9),blocks=rnd(100,400);return{q:'🕹️ במיינקראפט, שחקן בנה '+rows+' קירות, בכל קיר '+blocks+' בלוקים. כמה בלוקים השתמש בסך הכל?',a:rows*blocks}},
+      ()=>{const hours=rnd(2,7),coins=rnd(45,99);return{q:'🎮 נועם משחק ומרוויח '+coins+' מטבעות בכל שעה. כמה מטבעות ירוויח ב-'+hours+' שעות?',a:hours*coins}},
+      ()=>{const packs=rnd(3,8),cards=rnd(25,75);return{q:'🎲 שחקן קנה '+packs+' חפיסות קלפי פוקימון, בכל חפיסה '+cards+' קלפים. כמה קלפים יש לו?',a:packs*cards}},
+      ()=>{const levels=rnd(4,9),xp=rnd(110,350);return{q:'⚡ בכל שלב במשחק מקבלים '+xp+' נקודות ניסיון. שחקן עבר '+levels+' שלבים. כמה נקודות צבר?',a:levels*xp}},
     ];
-    wordProbs.filter(p=>!p.skip).forEach(p=>{
-      qs.push(typeQ(p.q, p.a, 'קראו שוב בעיון, חפשו את הפעולה המתאימה'));
-    });
+    for(let i=0;i<20;i++){
+      const gen=wordProbs[rnd(0,wordProbs.length-1)];
+      const p=gen();
+      qs.push(typeQ(p.q, p.a, 'מצאו את המספרים ואת פעולת הכפל'));
+    }
   }
   return shuffle(qs).slice(0,10);
 }
@@ -677,28 +641,30 @@ const LEVEL_META = {
   1: {
     title: '🎮 שלב 1: לוח הכפל והחילוק',
     missions: [
-      {id:'mult', name:'כפל בלבד', icon:'✖️', sub:'10 שאלות כפל'},
-      {id:'div', name:'חילוק בלבד', icon:'➗', sub:'10 שאלות חילוק'},
-      {id:'mix', name:'מיקס', icon:'🔀', sub:'כפל + חילוק'},
+      {id:'mult', name:'כפל בלבד', icon:'✖️', sub:'דגש על כפולות 7,8,9'},
+      {id:'div', name:'חילוק בלבד', icon:'➗', sub:'חילוק בתחום לוח הכפל'},
+      {id:'missing', name:'השלם את החסר', icon:'❓', sub:'___ × 8 = 56'},
+      {id:'mix', name:'מיקס', icon:'🔀', sub:'כפל + חילוק + השלמה'},
       {id:'boss', name:'קרב בוס!', icon:'👾', sub:'אתגר הבוס!', boss:true}
     ]
   },
   2: {
-    title: '⚔️ שלב 2: עולם הרבבה',
+    title: '⚔️ שלב 2: חיבור וחיסור בתחום הרבבה',
     missions: [
-      {id:'structure', name:'מבנה עשרוני והשוואה', icon:'🔢', sub:'ערכי ספרות, כתיבה מורחבת'},
-      {id:'rounding', name:'עיגול מספרים', icon:'🎯', sub:'עיגול לעשרות, מאות, אלפים'},
-      {id:'bigmult', name:'כפל וחילוק גדולים', icon:'💪', sub:'עשרות ומאות שלמות'},
-      {id:'mix', name:'מיקס', icon:'🔀', sub:'כל הנושאים'},
+      {id:'add', name:'חיבור', icon:'➕', sub:'חיבור עד 10,000'},
+      {id:'sub', name:'חיסור', icon:'➖', sub:'חיסור עד 10,000'},
+      {id:'word', name:'בעיות מילוליות גיימינג', icon:'🎮', sub:'רובלוקס, פורטנייט, XP'},
+      {id:'mix', name:'מיקס', icon:'🔀', sub:'חיבור + חיסור + מילוליות'},
       {id:'boss', name:'קרב בוס!', icon:'👾', sub:'אתגר הבוס!', boss:true}
     ]
   },
   3: {
-    title: '🏆 שלב 3: משימות בוס',
+    title: '🏆 שלב 3: כפל רב-ספרתי בחד-ספרתי',
     missions: [
-      {id:'order', name:'סדר פעולות', icon:'📐', sub:'סוגריים, כפל לפני חיבור'},
-      {id:'word', name:'בעיות מילוליות גיימינג', icon:'🎮', sub:'חשבון מעולם המשחקים'},
-      {id:'mix', name:'מיקס', icon:'🔀', sub:'סדר פעולות + בעיות מילוליות'},
+      {id:'double', name:'דו-ספרתי × חד-ספרתי', icon:'✖️', sub:'למשל 45 × 6'},
+      {id:'triple', name:'תלת-ספרתי × חד-ספרתי', icon:'💪', sub:'למשל 123 × 7'},
+      {id:'word', name:'בעיות מילוליות גיימינג', icon:'🎮', sub:'כפל מעולם המשחקים'},
+      {id:'mix', name:'מיקס', icon:'🔀', sub:'כל סוגי הכפל'},
       {id:'boss', name:'הבוס הגדול!', icon:'🐉', sub:'מיקס של הכל!', boss:true}
     ]
   }
@@ -981,17 +947,43 @@ function sendReportEmail(pct, rank){
     wrongDetails
   ].join('\n');
 
-  const formData = new FormData();
-  formData.append('name', playerName);
-  formData.append('_subject', 'דוח משימה - '+playerName+' - '+stageName+' - '+missionName);
-  formData.append('message', message);
-  formData.append('_captcha', 'false');
-  formData.append('_template', 'table');
+  // Use hidden form + iframe to avoid CORS/file:// issues
+  let iframe = document.getElementById('emailIframe');
+  if(!iframe){
+    iframe = document.createElement('iframe');
+    iframe.id = 'emailIframe';
+    iframe.name = 'emailIframe';
+    iframe.style.display = 'none';
+    document.body.appendChild(iframe);
+  }
 
-  fetch('https://formsubmit.co/ajax/idosharan@gmail.com', {
-    method: 'POST',
-    body: formData
-  }).catch(err => console.log('Email send failed:', err));
+  const form = document.createElement('form');
+  form.method = 'POST';
+  form.action = 'https://formsubmit.co/idosharan@gmail.com';
+  form.target = 'emailIframe';
+  form.style.display = 'none';
+
+  const fields = {
+    name: playerName,
+    _subject: 'דוח משימה - '+playerName+' - '+stageName+' - '+missionName,
+    message: message,
+    _captcha: 'false',
+    _template: 'table',
+    _next: 'https://formsubmit.co/thanks'
+  };
+
+  for(const key in fields){
+    const input = document.createElement('input');
+    input.type = 'hidden';
+    input.name = key;
+    input.value = fields[key];
+    form.appendChild(input);
+  }
+
+  document.body.appendChild(form);
+  form.submit();
+  form.remove();
+  console.log('Email form submitted');
 }
 
 function replayMission(){
